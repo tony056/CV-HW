@@ -1,6 +1,6 @@
 from PIL import Image
 import sys, os
-scriptDir = os.path.dirname(os.path.realpath(__file__)) + '/bin'
+scriptDir = os.path.dirname(os.path.realpath(__file__))
 
 if len(sys.argv) == 2:
 	im = Image.open(sys.argv[1])
