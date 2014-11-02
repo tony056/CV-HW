@@ -22,7 +22,7 @@ if len(sys.argv) is 2:
 	imageH, imageW = source.size
 	binaryPixels = binaryImage.load()
 	pixels = list(source.getdata())
-	histogram = [0 for x in xrange(255)]
+	histogram = [0 for x in xrange(256)]
 
 	for i in xrange(imageH):
 		for j in xrange(imageW):
