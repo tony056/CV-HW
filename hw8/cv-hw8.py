@@ -53,7 +53,7 @@ def medianFilter(sizes, neighborSizes, pixels):
 	result = [[0 for x in range(0, sizes[0])] for y in range(0, sizes[1])]
 	for y in range(0, sizes[1]):
 		for x in range(0, sizes[0]):
-			median = medianOfNeighbor(x, y, extend_pixels)
+			median = medianOfNeighbor(x, y, neighborSizes, extend_pixels)
 			result[x][y] = median
 	return result
 
@@ -74,8 +74,6 @@ def extend(sizes, extendSizes, pixels):
 		for x in range(startPoint, sizes[0] + startPoint):
 			extend_pixels[x][y] = pixels[x - startPoint][y - startPoint]
 	return extend_pixels
-
-# def toImage(imageList):
 
 
 if len(sys.argv) == 2:
@@ -102,46 +100,46 @@ if len(sys.argv) == 2:
 	saltAndPepperBig_image = Image.new(source_image.mode, source_image.size, 0)
 	saltAndPepperBig_image_result = saltAndPepperBig_image.load()
 
-	boxFilterSmall_image = Image.new(source_image.mode, source_image.size, 0)
-	boxFilterSmall_image_result = boxFilterSmall_image.load()
+	boxFilter_image = Image.new(source_image.mode, source_image.size, 0)
+	boxFilter_image_result = boxFilter_image.load()
 
-	boxFilterBig_image = Image.new(source_image.mode, source_image.size, 0)
-	boxFilterBig_image_result = boxFilterBig_image.load()
+	medianFilter_image = Image.new(source_image.mode, source_image.size, 0)
+	medianFilter_image_result = medianFilter_image.load()
 
-	gaussianNoisesTen = gaussianNoise(0, 1, 10, [imageW, imageH], source_image_pixels)
-	gaussianNoisesThirty = gaussianNoise(0, 1, 30, [imageW, imageH], source_image_pixels)
-	saltAndPepperSmall = saltAndPepper(0, 1, 0.05, [imageW, imageH], source_image_pixels)
-	saltAndPepperBig = saltAndPepper(0, 1, 0.1, [imageW, imageH], source_image_pixels)
+	noiseImages = []
 
-	boxFilterSmall = boxFilter(source_image.size, [3, 3], gaussianNoisesTen)
-	boxFilterBig = boxFilter(source_image.size, [5, 5], gaussianNoisesTen)
+	noiseImages.append(gaussianNoise(0, 1, 10, [imageW, imageH], source_image_pixels))
+	noiseImages.append(gaussianNoise(0, 1, 30, [imageW, imageH], source_image_pixels))
+	noiseImages.append(saltAndPepper(0, 1, 0.05, [imageW, imageH], source_image_pixels))
+	noiseImages.append(saltAndPepper(0, 1, 0.1, [imageW, imageH], source_image_pixels))
+
+	print len(noiseImages)
 
 	for y in range(0, imageH):
 		for x in range(0, imageW):
-			gaussian10_image_result[x, y] = gaussianNoisesTen[x][y]
-			gaussian30_image_result[x, y] = gaussianNoisesThirty[x][y]
-			saltAndPepperSmall_image_result[x, y] = saltAndPepperSmall[x][y]
-			saltAndPepperBig_image_result[x, y] = saltAndPepperBig[x][y]
-			boxFilterSmall_image_result[x, y] = boxFilterSmall[x][y]
-			boxFilterBig_image_result[x, y] = boxFilterBig[x][y]
+			gaussian10_image_result[x, y] = noiseImages[0][x][y]
+			gaussian30_image_result[x, y] = noiseImages[1][x][y]
+			saltAndPepperSmall_image_result[x, y] = noiseImages[2][x][y]
+			saltAndPepperBig_image_result[x, y] = noiseImages[3][x][y]
+
+	box = [[3, 3], [5, 5]]
+
+	for j in range(0, len(noiseImages)):
+		for i in box:
+			boxResult = boxFilter(source_image.size, i, noiseImages[j])
+			medianResult = medianFilter(source_image.size, i, noiseImages[j])
+			for y in range(0, imageH):
+				for x in range(0, imageW):
+					boxFilter_image_result[x, y] = boxResult[x][y]
+					medianFilter_image_result[x, y] = medianResult[x][y]
+			boxFilter_image.save("%s/%s.jpg" % (scriptDir, 'boxfiltNoise' + str(j) + '_' + str(i[0])))
+			medianFilter_image.save("%s/%s.jpg" % (scriptDir, 'medianFiltNoise' + str(j) + '_' + str(i[0])))
+
 
 	gaussian10_image.save("%s/%s.jpg" % (scriptDir, 'gaussian10'))
-	# gaussian10_image.show()
-
 	gaussian30_image.save("%s/%s.jpg" % (scriptDir, 'gaussian30'))
-	# gaussian30_image.show()
-
 	saltAndPepperSmall_image.save("%s/%s.jpg" % (scriptDir, 'saltAndPepper_0.05'))
-	# saltAndPepperSmall_image.show()
-
 	saltAndPepperBig_image.save("%s/%s.jpg" % (scriptDir, 'saltAndPepper_0.1'))
-	# saltAndPepperBig_image.show()
-
-	boxFilterSmall_image.save("%s/%s.jpg" % (scriptDir, 'boxForGaussian'))
-	boxFilterSmall_image.show()
-
-	boxFilterBig_image.save("%s/%s.jpg" % (scriptDir, 'boxForGaussianBig'))
-	boxFilterBig_image.show()
 
 else:
 	print 'please enter the path of source image!'
