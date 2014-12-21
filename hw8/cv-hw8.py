@@ -1,5 +1,5 @@
 from PIL import Image
-import sys, os, random
+import sys, os, random, math
 scriptDir = os.path.dirname(os.path.realpath(__file__))
 
 class Bitmap(object):
@@ -92,6 +92,9 @@ class Bitmap(object):
 		self.map = self.erosion(kernel)
 		self.map = self.erosion(kernel)
 		self.map = self.dilation(kernel)
+
+	def outputList(self):
+		return self.map
 
 	def outputImage(self, name, index):
 		size = [self.width, self.height]
@@ -189,6 +192,33 @@ def extend(sizes, extendSizes, pixels):
 
 	return extend_pixels
 
+def SNR(im1, im2, index, size, filterName, sizes):
+	n = (sizes[0] * sizes[1])
+	total = 0
+	for y in range(0, sizes[1]):
+		for x in range(0, sizes[0]):
+			total += im1[x][y]
+	mus = total / n
+
+	sqrtTotal = 0
+	filterTotal = 0
+	for y in range(0, sizes[1]):
+		for x in range(0, sizes[0]):
+			sqrtTotal += ((im1[x][y] - mus) ** 2)
+			filterTotal += (im2[x][y] - im1[x][y])
+	VS = sqrtTotal / n
+	munoise = filterTotal / n
+
+	sqrtNoiseTotal = 0
+	for y in range(0, sizes[1]):
+		for x in range(0, sizes[0]):
+			sqrtNoiseTotal += ((im2[x][y] - im1[x][y] - munoise) ** 2)
+	VN = sqrtNoiseTotal / n
+
+	snr = math.log10(math.sqrt(VS) / math.sqrt(VN)) * 20
+	title = fileNameGenerator(index, size, filterName)
+	snr_file.write(title + ": " + str(snr) + '\n')
+
 def fileNameGenerator(index, size, filterName):
 	noiseName = ""
 	if index == 0:
@@ -199,16 +229,26 @@ def fileNameGenerator(index, size, filterName):
 		noiseName = "SaltAndPepper0.05"
 	elif index == 3:
 		noiseName = "SaltAndPepper0.1"
-	string = filterName + '_' + noiseName + '_filterSize-' + str(size)
+	if size != -1:
+		string = filterName + '_' + noiseName + '_filterSize-' + str(size)
+	else:
+		string = filterName + '_' + noiseName
 	return string
 
 
 if len(sys.argv) == 2:
 	
+	snr_file = open('SNR.txt', 'w')
+
 	source_image = Image.open(sys.argv[1])
 	source_image_pixels = list(source_image.getdata())
 
+
 	imageW, imageH = source_image.size
+	source_result = [[0 for x in range(0, imageW)] for y in range(0, imageH)]
+	for y in range(0, imageH):
+		for x in range(0, imageW):
+			source_result[x][y] = source_image_pixels[y * imageW + x]
 
 	gaussian10_image = Image.new(source_image.mode, source_image.size, 0)
 	gaussian10_image_result = gaussian10_image.load()
@@ -262,18 +302,24 @@ if len(sys.argv) == 2:
 					medianFilter_image_result[x, y] = medianResult[x][y]
 			boxFilter_image.save("%s/%s.jpg" % (scriptDir, fileNameGenerator(j, i[0], 'Boxfilter')))
 			medianFilter_image.save("%s/%s.jpg" % (scriptDir, fileNameGenerator(j, i[0], 'Medianfilter')))
+			SNR(source_result, boxResult, j, i[0], 'Boxfilter', source_image.size)
+			SNR(source_result, medianResult, j, i[0], 'Medianfilter', source_image.size)
 	# noiseImages_bitmap = []
 	for i in xrange(len(noiseImages)):
 		print i
 		opening_closing_bitmap = Bitmap(imageW, imageH, 0, 0)
 		opening_closing_bitmap.copy(noiseImages[i])
 		opening_closing_bitmap.openingClosing(kernel_bitmap)
+		opening_closing_result = opening_closing_bitmap.outputList()
 		opening_closing_bitmap.outputImage('opening-closing', i)
+		SNR(source_result, opening_closing_result, i, -1, 'opening-closing', source_image.size)
 
 		closing_opening_bitmap = Bitmap(imageW, imageH, 0, 0)
 		closing_opening_bitmap.copy(noiseImages[i])
 		closing_opening_bitmap.closingOpening(kernel_bitmap)
+		closing_opening_result = closing_opening_bitmap.outputList()
 		closing_opening_bitmap.outputImage('closing-opening', i)
+		SNR(source_result, closing_opening_result, i, -1, 'closing-opening', source_image.size)
 		del opening_closing_bitmap
 		del closing_opening_bitmap
 
@@ -282,6 +328,7 @@ if len(sys.argv) == 2:
 	gaussian30_image.save("%s/%s.jpg" % (scriptDir, 'gaussian30'))
 	saltAndPepperSmall_image.save("%s/%s.jpg" % (scriptDir, 'saltAndPepper_0.05'))
 	saltAndPepperBig_image.save("%s/%s.jpg" % (scriptDir, 'saltAndPepper_0.1'))
+	snr_file.close()
 
 else:
 	print 'please enter the path of source image!'
